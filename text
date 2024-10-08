@@ -1,0 +1,387 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <wchar.h>
+#include <locale.h>
+
+/* run this program using the console pauser or add your own getch, system("pause") or input loop */
+int main(int argc, char *argv[]) {
+    //讀取輸出代數式(SOP)+宣告
+    setlocale(LC_ALL, ""); //設定寬字元輸出
+    wchar_t XOR = L'\u2295', XNOR = L'\u2299'; //UNICODE
+    char oba[99], result[99], De_simplify[99], *search;
+    printf("Please Enter The Output Boolean Algebra F(A,B,C)= ");
+    scanf("%s", &oba);
+    short temp = 0, retx = 0, i = 0, Demorgan = 0, F[8];
+
+
+    int judge_8[8] = {0};
+    int judge_4[99] = {0};
+
+    //處理笛摩根
+    search = strchr(oba, '('); //搜尋字元(
+    if (search != NULL) {
+        for (temp = 0; temp < 99; temp++) {
+            if (oba[temp] == '\0') {
+                break;
+            }
+
+            switch (oba[temp]) {
+                case'A':
+                    De_simplify[retx++] = 'A';
+                    break;
+                case'B':
+                    De_simplify[retx++] = 'B';
+                    break;
+                case'C':
+                    De_simplify[retx++] = 'C';
+                    break;
+                case'\'':
+                    if (oba[temp - 1] != ')' && Demorgan != 1) {
+                        De_simplify[retx++] = '\'';
+                    }
+                    break;
+                case'+':
+                    if (Demorgan != 1) {
+                        De_simplify[retx++] = '+';
+                    }
+                    continue;
+                case'(':
+                    Demorgan = 1;
+                    continue;
+                case')':
+                    Demorgan = 0;
+                    continue;
+            }
+
+            if (Demorgan == 1) {
+                if ((De_simplify[retx - 1] == 'A' || De_simplify[retx - 1] == 'B' || De_simplify[retx - 1] == 'C') &&
+                    oba[temp + 1] != '\'' && oba[temp + 1] != '+' && oba[temp + 1] != ')') {
+                    De_simplify[retx++] = '\'';
+                }
+                if (oba[temp + 1] != '+' && oba[temp + 1] != ')' && oba[temp + 1] != '\'' && oba[temp] != '+' && oba[
+                        temp] != ')' && oba[temp] != '\'') {
+                    //and-->or
+                    De_simplify[retx++] = '+';
+                }
+            }
+        }
+        strcpy(oba, De_simplify);
+    }
+
+
+    retx = 0;
+    printf("=%s\n", oba); //debug
+    //system("pause");
+
+
+    for (i = 0; i < 8; i++) {
+        F[i] = 0;
+        for (temp = 0; temp < strlen(oba); temp++) {
+            switch (oba[temp]) {
+                case 'A':
+                    result[retx++] = (i / 4) % 2 + '0';
+                    break;
+                case 'B':
+                    result[retx++] = (i / 2) % 2 + '0';
+                    break;
+                case 'C':
+                    result[retx++] = i % 2 + '0';
+                    break;
+                case '\'': //BAR
+                    if (result[retx - 1] != ')') {
+                        result[retx - 1] = (result[retx - 1] + 1) % 2 + '0';
+                    }
+                    break;
+                case '+':
+                    result[retx++] = '+';
+                    break;
+            }
+        }
+        /*printf("%s\n",result);//DEBUG
+        system("pause");*/
+        for (temp = 1; temp < strlen(result); temp++) {
+            if (result[temp] != '+') {
+                result[temp] &= result[temp - 1];
+                result[temp - 1] = 'f';
+            } else temp++;
+        }
+        /*printf("%s\n",result);//DEBUG
+        system("pause");*/
+        for (temp = 0; temp < strlen(result); temp++) {
+            if (result[temp] == '0' || result[temp] == '1') {
+                F[i] |= (result[temp] - '0');
+            }
+        }
+        retx = 0;
+    }
+    /*for(i=0;i<8;i++)//DEBUG
+        {
+            printf("F[%d] = %d\n",i,F[i]);
+        }
+        system("pause");*/
+
+
+    //互斥或偵測
+    if ((F[1] * F[2] * F[4] * F[7]) && !(F[0] + F[3] + F[5] + F[6])) {
+        wprintf(L"=A%lc B%lc C", XOR, XOR);
+        goto skip;
+    } else if (!(F[1] + F[2] + F[4] + F[7]) && (F[0] * F[3] * F[5] * F[6])) {
+        wprintf(L"=A%lc B%lc C", XNOR, XNOR);
+        goto skip;
+    } else {
+        //8
+        //項化簡(8項圈一起)
+        if (F[0] == 1) {
+            for (i = 0; i < 8; i++) //判斷全是1的情況
+            {
+                if (!(F[i])) break;
+                if (i == 7) {
+                    printf("=1");
+                    goto skip;
+                }
+            }
+        } else {
+            for (i = 0; i < 8; i++) //判斷全是0的情況
+            {
+                if (F[i]) break;
+                if (i == 7) {
+                    printf("=0");
+                    goto skip;
+                }
+            }
+        }
+    }
+
+    //4項化簡(4項圈一起)
+
+    for (i = 0; i < 25; i++) {
+        switch (i) {
+            case 0:
+                if (F[0] * F[1] * F[4] * F[5] && F[8] * F[9] * F[12] * F[13]) {
+                    result[retx++] = 'A';
+                    result[retx++] = '\'';
+                    result[retx++] = 'C';
+                    result[retx++] = '\'';
+                    judge_4[0] = 1;
+                }
+                break;
+        }
+    }
+    for (i = 0; i < 6; i++) {
+        switch (i) {
+            case 0:
+                if (F[0] * F[1] * F[4] * F[5]) {
+                    result[retx++] = 'B';
+                    result[retx++] = '\'';
+                    result[retx++] = '+';
+                }
+                break;
+            case 1:
+                if (F[1] * F[3] * F[5] * F[7]) {
+                    result[retx++] = 'C';
+                    result[retx++] = '+';
+                }
+                break;
+            case 2:
+                if (F[2] * F[0] * F[6] * F[4]) {
+                    result[retx++] = 'C';
+                    result[retx++] = '\'';
+                    result[retx++] = '+';
+                }
+                break;
+            case 3:
+                if (F[3] * F[2] * F[7] * F[6]) {
+                    result[retx++] = 'B';
+                    result[retx++] = '+';
+                }
+                break;
+            case 4:
+                if (F[0] * F[1] * F[2] * F[3]) {
+                    result[retx++] = 'A';
+                    result[retx++] = '\'';
+                    result[retx++] = '+';
+                }
+                break;
+            case 5:
+                if (F[4] * F[5] * F[6] * F[7]) {
+                    result[retx++] = 'A';
+                    result[retx++] = '+';
+                }
+                break;
+        }
+    }
+
+
+    //2項化簡
+    for (i = 0; i < 4; i++) {
+        switch (i) {
+            case 0:
+                if (F[0] && (F[1] && !((F[5] && F[4]) || (F[2] && F[3])) || F[4] && !(
+                                 (F[1] && F[5]) || (F[2] && F[6])))) {
+                    if (F[1]) {
+                        result[retx++] = 'A';
+                        result[retx++] = '\'';
+                        result[retx++] = 'B';
+                        result[retx++] = '\'';
+                        result[retx++] = '+';
+                    } else {
+                        result[retx++] = 'B';
+                        result[retx++] = '\'';
+                        result[retx++] = 'C';
+                        result[retx++] = '\'';
+                        result[retx++] = '+';
+                    }
+                } else if (F[4] && (F[5] && !((F[0] && F[1]) || (F[6] && F[7])))) {
+                    result[retx++] = 'A';
+                    result[retx++] = 'B';
+                    result[retx++] = '\'';
+                    result[retx++] = '+';
+                }
+                break;
+            case 1:
+                if (F[1] && (F[3] && !((F[5] && F[7]) || (F[0] && F[2]) || F[5] && !(
+                                           (F[0] && F[4]) || (F[3] && F[7]))))) {
+                    if (F[3]) {
+                        result[retx++] = 'A';
+                        result[retx++] = '\'';
+                        result[retx++] = 'C';
+                        result[retx++] = '+';
+                    } else {
+                        result[retx++] = 'B';
+                        result[retx++] = '\'';
+                        result[retx++] = 'C';
+                        result[retx++] = '+';
+                    }
+                } else if (F[5] && (F[7] && !((F[1] && F[3]) || (F[4] && F[6])))) {
+                    result[retx++] = 'A';
+                    result[retx++] = 'C';
+                    result[retx++] = '+';
+                }
+                break;
+            case 2:
+                if (F[2] && (F[0] && !((F[4] && F[6]) || (F[1] && F[3])) || F[6] && !(
+                                 (F[0] && F[4]) || (F[3] && F[7])))) {
+                    if (F[0]) {
+                        result[retx++] = 'A';
+                        result[retx++] = '\'';
+                        result[retx++] = 'C';
+                        result[retx++] = '\'';
+                        result[retx++] = '+';
+                    } else {
+                        result[retx++] = 'B';
+                        result[retx++] = 'C';
+                        result[retx++] = '\'';
+                        result[retx++] = '+';
+                    }
+                } else if (F[6] && (F[4] && !((F[0] && F[2]) || (F[5] && F[7])))) {
+                    result[retx++] = 'A';
+                    result[retx++] = 'C';
+                    result[retx++] = '\'';
+                    result[retx++] = '+';
+                }
+                break;
+            case 3:
+                if (F[3] && (F[2] && !((F[6] && F[7]) || (F[0] && F[1])) || F[7] && !(
+                                 (F[1] && F[5]) || (F[2] && F[6])))) {
+                    if (F[2]) {
+                        result[retx++] = 'A';
+                        result[retx++] = '\'';
+                        result[retx++] = 'B';
+                        result[retx++] = '+';
+                    } else {
+                        result[retx++] = 'B';
+                        result[retx++] = 'C';
+                        result[retx++] = '+';
+                    }
+                } else if (F[7] && (F[6] && !((F[2] && F[3]) || (F[4] && F[5])))) {
+                    result[retx++] = 'A';
+                    result[retx++] = 'B';
+                    result[retx++] = '+';
+                }
+                break;
+        }
+    }
+
+
+    //單獨項無法化簡
+    for (i = 0; i < 4; i++) {
+        switch (i) {
+            case 0:
+                if (F[0] && !(F[1] || F[2] || F[4])) {
+                    result[retx++] = 'A';
+                    result[retx++] = '\'';
+                    result[retx++] = 'B';
+                    result[retx++] = '\'';
+                    result[retx++] = 'C';
+                    result[retx++] = '\'';
+                    result[retx++] = '+';
+                } else if (F[4] && !(F[0] || F[5] || F[6])) {
+                    result[retx++] = 'A';
+                    result[retx++] = 'B';
+                    result[retx++] = '\'';
+                    result[retx++] = 'C';
+                    result[retx++] = '\'';
+                    result[retx++] = '+';
+                }
+                break;
+            case 1:
+                if (F[1] && !(F[0] || F[3] || F[5])) {
+                    result[retx++] = 'A';
+                    result[retx++] = '\'';
+                    result[retx++] = 'B';
+                    result[retx++] = '\'';
+                    result[retx++] = 'C';
+                    result[retx++] = '+';
+                } else if (F[5] && !(F[1] || F[4] || F[7])) {
+                    result[retx++] = 'A';
+                    result[retx++] = 'B';
+                    result[retx++] = '\'';
+                    result[retx++] = 'C';
+                    result[retx++] = '+';
+                }
+                break;
+            case 2:
+                if (F[2] && !(F[0] || F[3] || F[6])) {
+                    result[retx++] = 'A';
+                    result[retx++] = '\'';
+                    result[retx++] = 'B';
+                    result[retx++] = 'C';
+                    result[retx++] = '\'';
+                    result[retx++] = '+';
+                } else if (F[6] && !(F[2] || F[4] || F[7])) {
+                    result[retx++] = 'A';
+                    result[retx++] = 'B';
+                    result[retx++] = 'C';
+                    result[retx++] = '\'';
+                    result[retx++] = '+';
+                }
+                break;
+            case 3:
+                if (F[3] && !(F[1] || F[2] || F[7])) {
+                    result[retx++] = 'A';
+                    result[retx++] = '\'';
+                    result[retx++] = 'B';
+                    result[retx++] = 'C';
+                    result[retx++] = '+';
+                } else if (F[7] && !(F[3] || F[5] || F[6])) {
+                    result[retx++] = 'A';
+                    result[retx++] = 'B';
+                    result[retx++] = 'C';
+                    result[retx++] = '+';
+                }
+                break;
+        }
+    }
+    result[--retx] = '\0';
+    printf("=%s", result);
+
+skip:
+    printf("\n\nTrue Table:\n");
+    printf(" A | B | C | Y \n");
+    for (i = 0; i < 8; i++) {
+        printf("---+---+---+---\n");
+        printf(" %d | %d | %d | %d \n", (i / 4) % 2, (i / 2) % 2, i % 2, F[i]);
+    }
+    return 0;
+}
